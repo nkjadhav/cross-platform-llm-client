@@ -75,7 +75,7 @@ Keep this contract when adding new media providers — don't invent parallel Cha
 
 The chat composer's image picker (`selectedImagePath`) doubles as the reference image for local image generation. `LocalImageService.generateImage` decides between two paths:
 
-1. **ControlNet enabled** (`keyControlNetEnabled` true and `keyControlNetPath` non-empty) → routes the upload through `PoseExtractionService.extractPoseRgb` (MediaPipe → 18-keypoint OpenPose stick figure on a black 512×512 canvas) and passes it as `control_cond` + `control_strength`.
+1. **ControlNet enabled** (`keyControlNetEnabled` true and `keyControlNetPath` non-empty) → routes the upload through `PoseExtractionService.extractPoseRgb` (MediaPipe → 18-keypoint OpenPose stick figure on a black 512×512 canvas) and passes it as `control_image` + `control_strength`.
 2. **No ControlNet** → resizes the upload to 512×512 RGB and passes it as `init_image` + `strength` (classic img2img).
 
 The ControlNet checkpoint is loaded into the same `sd_ctx_t` as the base SD model — `SdFlutterAndroid.initModel` takes both `path` and `controlNetPath`, and `sd_ctx_params_t.control_net_path` is set in the JNI wrapper. Switching ControlNet on/off after the base model is loaded does not re-init the ctx; users must reload the base model.

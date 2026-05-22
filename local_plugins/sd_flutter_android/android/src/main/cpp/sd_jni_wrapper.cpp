@@ -195,10 +195,10 @@ Java_com_example_sd_1flutter_1android_SdFlutterAndroidPlugin_generateImage(
             control_buf.resize(cn_expected);
             env->GetByteArrayRegion(control_image, 0, cn_len,
                                     reinterpret_cast<jbyte*>(control_buf.data()));
-            params.control_cond.width = (uint32_t)control_width;
-            params.control_cond.height = (uint32_t)control_height;
-            params.control_cond.channel = 3;
-            params.control_cond.data = control_buf.data();
+            params.control_image.width = (uint32_t)control_width;
+            params.control_image.height = (uint32_t)control_height;
+            params.control_image.channel = 3;
+            params.control_image.data = control_buf.data();
             params.control_strength = control_strength;
             LOGI("ControlNet: cond %dx%d, strength=%.2f",
                  control_width, control_height, control_strength);
