@@ -24,6 +24,7 @@ class SdFlutterAndroidPlugin: FlutterPlugin, MethodCallHandler {
 
   // Native methods (linked to sd_jni_wrapper.cpp)
   private external fun initModel(path: String, controlNetPath: String): Boolean
+  private external fun getLastError(): String?
   private external fun generateImage(
     prompt: String,
     steps: Int,
@@ -60,7 +61,11 @@ class SdFlutterAndroidPlugin: FlutterPlugin, MethodCallHandler {
           scope.launch {
             try {
               val success = initModel(path, controlNetPath)
-              withContext(Dispatchers.Main) { result.success(success) }
+              // On failure surface the last sd.cpp log line as the result
+              // string so Dart can show it in the UI instead of a generic
+              // "Model initialization failed" message.
+              val reply: Any = if (success) true else (getLastError() ?: false)
+              withContext(Dispatchers.Main) { result.success(reply) }
             } catch (e: Exception) {
               withContext(Dispatchers.Main) { result.error("INIT_FAILED", e.message, null) }
             }

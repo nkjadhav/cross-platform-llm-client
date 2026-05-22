@@ -12,6 +12,9 @@ static sd_ctx_t* g_sd_ctx = nullptr;
 static JavaVM* g_jvm = nullptr;
 static jobject g_progress_callback = nullptr;
 static std::string g_model_path;
+// Last error message captured from sd.cpp's log callback. Surfaced to Dart
+// so users see the real reason init failed rather than a generic message.
+static std::string g_last_sd_error;
 
 extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
     g_jvm = vm;
@@ -20,6 +23,11 @@ extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
 
 void sd_log_cb(enum sd_log_level_t level, const char* text, void* data) {
     LOGI("[SD Core] %s", text);
+    // Remember the most recent ERROR/WARN line so initModel can return it
+    // to Dart when new_sd_ctx fails.
+    if (text && (level >= SD_LOG_WARN)) {
+        g_last_sd_error.assign(text);
+    }
 }
 
 // Thread-local guard: attaches a native worker thread to the JVM once and
@@ -97,7 +105,12 @@ Java_com_example_sd_1flutter_1android_SdFlutterAndroidPlugin_initModel(
     sd_set_log_callback(sd_log_cb, nullptr);
     sd_set_progress_callback(sd_progress_cb, nullptr);
 
-    sd_ctx_params_t params;
+    // Defensive zero-init: upstream sd.cpp has grown ~30+ new pointer fields
+    // (clip_l_path, clip_g_path, t5xxl_path, llm_path, backend, etc.) since
+    // this wrapper was written. If sd_ctx_params_init misses any of them,
+    // they retain stack garbage and new_sd_ctx tries to dereference garbage
+    // pointers during load. {} ensures every field starts at 0/null/false.
+    sd_ctx_params_t params = {};
     sd_ctx_params_init(&params);
     params.model_path = path;
 
@@ -143,7 +156,7 @@ Java_com_example_sd_1flutter_1android_SdFlutterAndroidPlugin_generateImage(
 
     const char* p_str = env->GetStringUTFChars(prompt, nullptr);
 
-    sd_img_gen_params_t params;
+    sd_img_gen_params_t params = {};
     sd_img_gen_params_init(&params);
     params.prompt = p_str;
     params.sample_params.sample_steps = steps;
@@ -241,6 +254,13 @@ Java_com_example_sd_1flutter_1android_SdFlutterAndroidPlugin_generateImage(
     free(result);
 
     return array;
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_example_sd_1flutter_1android_SdFlutterAndroidPlugin_getLastError(
+    JNIEnv* env, jobject thiz) {
+    if (g_last_sd_error.empty()) return nullptr;
+    return env->NewStringUTF(g_last_sd_error.c_str());
 }
 
 extern "C" JNIEXPORT void JNICALL
