@@ -113,16 +113,23 @@ jobs:
           echo "== find APKs under build/ =="
           find build -name '*.apk' 2>/dev/null || true
 
+      - name: Stage APK into a known location
+        # Flutter's output path moves between versions. Copy whatever the
+        # build produced into a stable directory the upload step can rely on.
+        run: |
+          set -euxo pipefail
+          mkdir -p staging
+          find build -name '*.apk' -exec cp {} staging/ \;
+          ls -la staging/
+          test -n "$(ls staging/*.apk 2>/dev/null)" || \
+            (echo "FATAL: build produced no APK files" && exit 1)
+
       - name: Upload APK artifact
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: privatelm-debug-${{ github.sha }}
-          # Catch both the legacy and newer Flutter output paths.
-          path: |
-            build/app/outputs/flutter-apk/*.apk
-            build/app/outputs/apk/debug/*.apk
-            build/app/outputs/apk/release/*.apk
+          path: staging/*.apk
           if-no-files-found: error
           retention-days: 30
 
