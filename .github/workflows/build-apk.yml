@@ -102,7 +102,13 @@ jobs:
       - name: Build debug APK
         env:
           GRADLE_OPTS: -Xmx4g -Dorg.gradle.daemon=false
-        run: flutter build apk --debug --verbose 2>&1 | tee build.log
+        # Use a login shell with pipefail so `tee` doesn't mask flutter's
+        # real exit code — without this, prior runs showed step success
+        # while the build silently produced no APK.
+        shell: bash
+        run: |
+          set -o pipefail
+          flutter build apk --debug --verbose 2>&1 | tee build.log
 
       - name: Locate APK output
         # Help the next step's glob match by reporting exactly where the APK
@@ -276,7 +282,10 @@ jobs:
       - name: Build release APK
         env:
           GRADLE_OPTS: -Xmx4g -Dorg.gradle.daemon=false
-        run: flutter build apk --release --verbose 2>&1 | tee build.log
+        shell: bash
+        run: |
+          set -o pipefail
+          flutter build apk --release --verbose 2>&1 | tee build.log
 
       - name: Locate + rename APK
         run: |
