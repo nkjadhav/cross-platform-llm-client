@@ -65,15 +65,20 @@ jobs:
           key: native-${{ runner.os }}
 
       - name: Vendor stable-diffusion.cpp
-        # This directory is intentionally empty in the repo. Cloning at build
-        # time keeps the repo lean and avoids tracking upstream churn.
+        # The directory is intentionally empty in the repo. Always re-clone
+        # to get a clean checkout, and use --shallow-submodules so the ggml
+        # submodule stays fast without hitting the shallow+recurse exit-128
+        # trap that happens when submodule SHAs are outside shallow history.
         run: |
+          set -euxo pipefail
           cd local_plugins/sd_flutter_android/android/src/main/cpp
-          if [ -z "$(ls -A stable-diffusion.cpp)" ]; then
-            rm -rf stable-diffusion.cpp
-            git clone --depth 1 --recurse-submodules \
-              https://github.com/leejet/stable-diffusion.cpp stable-diffusion.cpp
-          fi
+          rm -rf stable-diffusion.cpp
+          git clone --recurse-submodules --shallow-submodules \
+            https://github.com/leejet/stable-diffusion.cpp stable-diffusion.cpp
+          # Smoke check — the JNI wrapper #includes stable-diffusion.h, so
+          # the build will only get past CMake configure if this exists.
+          test -f stable-diffusion.cpp/include/stable-diffusion.h || \
+            (echo "FATAL: stable-diffusion.h not found after clone" && exit 1)
 
       - name: flutter pub get
         run: flutter pub get
@@ -144,12 +149,13 @@ jobs:
 
       - name: Vendor stable-diffusion.cpp
         run: |
+          set -euxo pipefail
           cd local_plugins/sd_flutter_android/android/src/main/cpp
-          if [ -z "$(ls -A stable-diffusion.cpp)" ]; then
-            rm -rf stable-diffusion.cpp
-            git clone --depth 1 --recurse-submodules \
-              https://github.com/leejet/stable-diffusion.cpp stable-diffusion.cpp
-          fi
+          rm -rf stable-diffusion.cpp
+          git clone --recurse-submodules --shallow-submodules \
+            https://github.com/leejet/stable-diffusion.cpp stable-diffusion.cpp
+          test -f stable-diffusion.cpp/include/stable-diffusion.h || \
+            (echo "FATAL: stable-diffusion.h not found after clone" && exit 1)
 
       - name: Decode release keystore (optional)
         # If you've configured ANDROID_KEYSTORE_BASE64 + ANDROID_KEY_PASSWORD +
