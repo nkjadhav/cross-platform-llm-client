@@ -60,7 +60,27 @@ All state lives in four Hive boxes (`lib/core/constants.dart`): `chat_sessions`,
 
 ### Cloud provider abstraction
 
-`CloudService` (`lib/services/cloud_service.dart`) normalizes ~8 provider shapes behind one `sendMessage()` interface. The provider switch threads through `_provider`, `_apiKey`, `_model` getters reading Hive — adding a provider means: new key constants in `AppConstants`, new branches in those getters, and a new request-builder branch in `sendMessage`. Anthropic uses a separate `system` param; Gemini takes inline base64 images; OpenAI-compatible providers (Kimi, NVIDIA, OpenRouter, custom) share the `/v1/chat/completions` shape.
+`CloudService` (`lib/services/cloud_service.dart`) normalizes ~9 provider shapes behind one `sendMessage()` interface. The provider switch threads through `_provider`, `_apiKey`, `_model` getters reading Hive — adding a provider means: new key constants in `AppConstants`, new branches in those getters, a new request-builder branch in `sendMessage`, AND a `CloudProviderInfo` entry in `cloud_model_controller.dart::providers` so the picker UI surfaces it. Also add corresponding key/model `TextEditingController` + `obs` + `apiKeyControllerFor`/`modelControllerFor`/`setApiKey`/`setCloudModel` branches in `SettingsController`. Anthropic uses a separate `system` param; Gemini takes inline base64 images; OpenAI-compatible providers (Kimi, NVIDIA, OpenRouter, custom) share the `/v1/chat/completions` shape; **Replicate** uses a POST→poll→download flow against `https://api.replicate.com/v1/models/<owner>/<name>/predictions` and writes the resulting mp4 to the app's temp dir, returning `[VIDEO_PATH]<path>`.
+
+### Generated-media response convention
+
+Non-text cloud/local outputs are returned through `sendMessage` (or local `LocalImageService.generateImage`) using sentinel prefixes that `ChatController._handle*` rewrites into `ChatMessage` fields:
+
+- `[IMAGE_BASE64]<b64>` → `aiMsg.imageBase64`
+- `[VIDEO_PATH]<absolute path>` → `aiMsg.videoPath` (renders via `ChatVideoPlayer` in `chat_bubble.dart`)
+
+Keep this contract when adding new media providers — don't invent parallel ChatMessage subclasses.
+
+### Image-reference pipeline (img2img / ControlNet)
+
+The chat composer's image picker (`selectedImagePath`) doubles as the reference image for local image generation. `LocalImageService.generateImage` decides between two paths:
+
+1. **ControlNet enabled** (`keyControlNetEnabled` true and `keyControlNetPath` non-empty) → routes the upload through `PoseExtractionService.extractPoseRgb` (MediaPipe → 18-keypoint OpenPose stick figure on a black 512×512 canvas) and passes it as `control_cond` + `control_strength`.
+2. **No ControlNet** → resizes the upload to 512×512 RGB and passes it as `init_image` + `strength` (classic img2img).
+
+The ControlNet checkpoint is loaded into the same `sd_ctx_t` as the base SD model — `SdFlutterAndroid.initModel` takes both `path` and `controlNetPath`, and `sd_ctx_params_t.control_net_path` is set in the JNI wrapper. Switching ControlNet on/off after the base model is loaded does not re-init the ctx; users must reload the base model.
+
+ControlNet models are detected by `ModelController.isControlNetModel` (filename contains `control_v` / `controlnet`, or `template == 'controlnet'`) and "loading" them just stores the path in `keyControlNetPath` instead of going through the SD engine.
 
 ### Local OpenAI-compatible server + tunneling
 
