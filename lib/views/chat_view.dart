@@ -510,13 +510,24 @@ class ChatView extends GetView<ChatController> {
                   ));
             }),
             Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-              // Image picker
+              // Image picker — shown whenever the active configuration can
+              // actually consume an image:
+              //   • Local LiteRT vision model (multimodal chat)
+              //   • Local SD image model loaded (img2img / ControlNet ref)
+              //   • Cloud mode (multimodal LLMs + Replicate image-to-video)
               Obx(() {
                 final s = Get.find<SettingsController>();
                 final inf = Get.find<InferenceService>();
-                if (!(s.inferenceMode.value == 'local' &&
+                final sd = Get.find<LocalImageService>();
+                final isLocal = s.inferenceMode.value == 'local';
+                final isLiteRtVision = isLocal &&
                     inf.loadedModelRuntime.value == 'litert' &&
-                    inf.isVisionLoaded.value)) return const SizedBox.shrink();
+                    inf.isVisionLoaded.value;
+                final isSdLoaded = isLocal && sd.isModelLoaded.value;
+                final isCloud = s.inferenceMode.value == 'cloud';
+                if (!(isLiteRtVision || isSdLoaded || isCloud)) {
+                  return const SizedBox.shrink();
+                }
                 return IconButton(
                     icon: Icon(Icons.photo_outlined,
                         color: Theme.of(context).hintColor, size: 22),
@@ -524,7 +535,8 @@ class ChatView extends GetView<ChatController> {
                     padding: const EdgeInsets.all(8),
                     constraints: const BoxConstraints());
               }),
-              // File picker
+              // File picker — only meaningful for LiteRT vision (PDF/docx
+              // ingestion). Hidden for SD image-gen and cloud video.
               Obx(() {
                 final s = Get.find<SettingsController>();
                 final inf = Get.find<InferenceService>();
