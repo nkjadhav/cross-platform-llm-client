@@ -209,6 +209,58 @@ class SettingsView extends GetView<SettingsController> {
                   icon: Icons.tune_rounded,
                   warning:
                       'Lower = stays closer to reference. Higher = more creative.'),
+              const SizedBox(height: 10),
+              _appleGroupedCard(context, isDark, children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+                  child: Row(children: [
+                    Icon(Icons.accessibility_new_rounded,
+                        size: 18,
+                        color: isDark
+                            ? const Color(0xFF0A84FF)
+                            : AppColors.primary),
+                    const SizedBox(width: 10),
+                    Expanded(
+                        child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                          Text('ControlNet Pose',
+                              style: GoogleFonts.inter(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w500)),
+                          Text(
+                              controller.controlNetName.value.isEmpty
+                                  ? 'Download the ControlNet OpenPose model first'
+                                  : 'Using ${controller.controlNetName.value}',
+                              style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  color: isDark
+                                      ? Colors.white54
+                                      : Colors.black54)),
+                        ])),
+                    Switch.adaptive(
+                      value: controller.controlNetEnabled.value,
+                      onChanged: controller.controlNetName.value.isEmpty
+                          ? null
+                          : controller.setControlNetEnabled,
+                    ),
+                  ]),
+                ),
+              ]),
+              const SizedBox(height: 10),
+              _buildSlider(context, isDark,
+                  label: 'ControlNet Strength',
+                  value: controller.controlStrength.value,
+                  min: 0.0,
+                  max: 2.0,
+                  divisions: 20,
+                  safeMax: 2.0,
+                  onChanged: (v) => controller.setControlStrength(v),
+                  displayValue:
+                      controller.controlStrength.value.toStringAsFixed(2),
+                  icon: Icons.accessibility_new_rounded,
+                  warning:
+                      'How rigidly the output follows the extracted pose.'),
               const SizedBox(height: 24),
               _sectionLabel(context, 'ABOUT'),
               _appleGroupedCard(context, isDark, children: [

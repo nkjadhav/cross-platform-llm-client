@@ -16,6 +16,7 @@ import 'services/cloud_service.dart';
 import 'services/download_service.dart';
 import 'services/device_info_service.dart';
 import 'services/local_image_service.dart';
+import 'services/pose_extraction_service.dart';
 import 'services/app_log_service.dart';
 import 'core/constants.dart';
 
@@ -44,6 +45,10 @@ void main() async {
   Get.put(CloudService());
   Get.put(DownloadService());
   Get.put(LocalImageService());
+  if (!kIsWeb) {
+    // Pose detection (ML Kit) is mobile-only; web stays cloud-only.
+    Get.put(PoseExtractionService());
+  }
   Get.put(AppLogService());
   Get.put(ServerController(), permanent: true);
   Get.put(ModelController());

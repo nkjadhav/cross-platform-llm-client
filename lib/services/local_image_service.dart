@@ -7,6 +7,7 @@ import 'package:llama_flutter_android/llama_flutter_android.dart';
 import 'package:sd_flutter_android/sd_flutter_android.dart';
 import '../core/constants.dart';
 import 'hive_service.dart';
+import 'pose_extraction_service.dart';
 
 class LocalImageService extends GetxService {
   final HiveService _hive = Get.find<HiveService>();
@@ -48,8 +49,21 @@ class LocalImageService extends GetxService {
         print('[LocalImageService] File check error: $e');
       }
 
+      // If the user has a ControlNet enabled with a downloaded checkpoint,
+      // load it alongside the base model — sd.cpp wants both at ctx init.
+      final controlNetEnabled =
+          _hive.getSetting<bool>(AppConstants.keyControlNetEnabled,
+                  defaultValue: false) ??
+              false;
+      final controlNetPath = controlNetEnabled
+          ? _hive.getSetting<String>(AppConstants.keyControlNetPath) ?? ''
+          : '';
+
       print('[LocalImageService] Calling SdFlutterAndroid.initModel...');
-      final rawResult = await SdFlutterAndroid.initModelRaw(modelPath);
+      final rawResult = await SdFlutterAndroid.initModelRaw(
+        modelPath,
+        controlNetPath: controlNetPath.isEmpty ? null : controlNetPath,
+      );
       print('[LocalImageService] initModel raw result: $rawResult');
 
       final success = rawResult is bool ? rawResult : (rawResult is String && rawResult == 'true');
@@ -100,12 +114,43 @@ class LocalImageService extends GetxService {
       Uint8List? referenceRgb;
       int referenceWidth = 0;
       int referenceHeight = 0;
+      Uint8List? controlRgb;
+      int controlWidth = 0;
+      int controlHeight = 0;
+
+      final controlNetEnabled =
+          _hive.getSetting<bool>(AppConstants.keyControlNetEnabled,
+                  defaultValue: false) ??
+              false;
+      final controlNetLoaded = controlNetEnabled &&
+          ((_hive.getSetting<String>(AppConstants.keyControlNetPath) ?? '')
+              .isNotEmpty);
+
       if (referenceImagePath != null && referenceImagePath.isNotEmpty) {
-        final prepared = await _prepareReferenceImage(referenceImagePath);
-        if (prepared != null) {
-          referenceRgb = prepared.rgbBytes;
-          referenceWidth = prepared.width;
-          referenceHeight = prepared.height;
+        if (controlNetLoaded && Get.isRegistered<PoseExtractionService>()) {
+          // Route the upload through pose extraction → ControlNet cond image.
+          final pose = await Get.find<PoseExtractionService>()
+              .extractPoseRgb(referenceImagePath);
+          if (pose != null) {
+            controlRgb = pose.rgb;
+            controlWidth = pose.width;
+            controlHeight = pose.height;
+          } else {
+            // Pose extraction failed — fall back to plain img2img.
+            final prepared = await _prepareReferenceImage(referenceImagePath);
+            if (prepared != null) {
+              referenceRgb = prepared.rgbBytes;
+              referenceWidth = prepared.width;
+              referenceHeight = prepared.height;
+            }
+          }
+        } else {
+          final prepared = await _prepareReferenceImage(referenceImagePath);
+          if (prepared != null) {
+            referenceRgb = prepared.rgbBytes;
+            referenceWidth = prepared.width;
+            referenceHeight = prepared.height;
+          }
         }
       }
 
@@ -113,6 +158,10 @@ class LocalImageService extends GetxService {
           _hive.getSetting<double>(AppConstants.keyImageStrength,
               defaultValue: AppConstants.defaultImageStrength) ??
           AppConstants.defaultImageStrength;
+      final effectiveControlStrength = _hive.getSetting<double>(
+              AppConstants.keyControlStrength,
+              defaultValue: AppConstants.defaultControlStrength) ??
+          AppConstants.defaultControlStrength;
 
       final rawBytes = await SdFlutterAndroid.generateImage(
         prompt,
@@ -121,6 +170,10 @@ class LocalImageService extends GetxService {
         referenceWidth: referenceWidth,
         referenceHeight: referenceHeight,
         strength: effectiveStrength,
+        controlImage: controlRgb,
+        controlWidth: controlWidth,
+        controlHeight: controlHeight,
+        controlStrength: effectiveControlStrength,
         onProgress: (step, total) {
           onProgress?.call(step, total);
         }

@@ -23,7 +23,7 @@ class SdFlutterAndroidPlugin: FlutterPlugin, MethodCallHandler {
   }
 
   // Native methods (linked to sd_jni_wrapper.cpp)
-  private external fun initModel(path: String): Boolean
+  private external fun initModel(path: String, controlNetPath: String): Boolean
   private external fun generateImage(
     prompt: String,
     steps: Int,
@@ -32,6 +32,10 @@ class SdFlutterAndroidPlugin: FlutterPlugin, MethodCallHandler {
     referenceWidth: Int,
     referenceHeight: Int,
     strength: Float,
+    controlImage: ByteArray?,
+    controlWidth: Int,
+    controlHeight: Int,
+    controlStrength: Float,
   ): ByteArray?
   private external fun unloadModel()
 
@@ -51,10 +55,11 @@ class SdFlutterAndroidPlugin: FlutterPlugin, MethodCallHandler {
       }
       "initModel" -> {
         val path = call.argument<String>("path")
+        val controlNetPath = call.argument<String>("controlNetPath") ?: ""
         if (path != null) {
           scope.launch {
             try {
-              val success = initModel(path)
+              val success = initModel(path, controlNetPath)
               withContext(Dispatchers.Main) { result.success(success) }
             } catch (e: Exception) {
               withContext(Dispatchers.Main) { result.error("INIT_FAILED", e.message, null) }
@@ -71,6 +76,10 @@ class SdFlutterAndroidPlugin: FlutterPlugin, MethodCallHandler {
         val referenceWidth = call.argument<Int>("referenceWidth") ?: 0
         val referenceHeight = call.argument<Int>("referenceHeight") ?: 0
         val strength = (call.argument<Double>("strength") ?: 0.75).toFloat()
+        val controlImage = call.argument<ByteArray>("controlImage")
+        val controlWidth = call.argument<Int>("controlWidth") ?: 0
+        val controlHeight = call.argument<Int>("controlHeight") ?: 0
+        val controlStrength = (call.argument<Double>("controlStrength") ?: 1.0).toFloat()
         if (prompt != null) {
           scope.launch {
             try {
@@ -83,6 +92,10 @@ class SdFlutterAndroidPlugin: FlutterPlugin, MethodCallHandler {
                 referenceWidth,
                 referenceHeight,
                 strength,
+                controlImage,
+                controlWidth,
+                controlHeight,
+                controlStrength,
               )
               withContext(Dispatchers.Main) {
                 if (bytes != null) {

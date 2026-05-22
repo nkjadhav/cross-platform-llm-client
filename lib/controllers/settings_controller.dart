@@ -42,6 +42,9 @@ class SettingsController extends GetxController {
   final liteRtPerformanceMode = AppConstants.defaultLiteRtPerformanceMode.obs;
   final imageSteps = 4.obs;
   final imageStrength = AppConstants.defaultImageStrength.obs;
+  final controlNetEnabled = false.obs;
+  final controlStrength = AppConstants.defaultControlStrength.obs;
+  final controlNetName = ''.obs;
 
   // Persistent text controllers for settings fields
   final openaiKeyController = TextEditingController();
@@ -99,6 +102,10 @@ class SettingsController extends GetxController {
     _modelDebounceTimer?.cancel();
     super.onClose();
   }
+
+  /// Re-read all observable settings from Hive. Call after another controller
+  /// has written a settings key that the UI needs to reflect immediately.
+  void syncFromHive() => _loadSettings();
 
   void _loadSettings() {
     final savedTheme = _hive.getSetting<String>('theme_mode');
@@ -171,6 +178,16 @@ class SettingsController extends GetxController {
             AppConstants.keyImageStrength,
             defaultValue: AppConstants.defaultImageStrength) ??
         AppConstants.defaultImageStrength;
+    controlNetEnabled.value = _hive.getSetting<bool>(
+            AppConstants.keyControlNetEnabled,
+            defaultValue: false) ??
+        false;
+    controlStrength.value = _hive.getSetting<double>(
+            AppConstants.keyControlStrength,
+            defaultValue: AppConstants.defaultControlStrength) ??
+        AppConstants.defaultControlStrength;
+    controlNetName.value =
+        _hive.getSetting<String>(AppConstants.keyControlNetName) ?? '';
 
     // Sync controllers with loaded values
     openaiKeyController.text = openaiKey.value;
@@ -496,6 +513,17 @@ class SettingsController extends GetxController {
     final clamped = value.clamp(0.0, 1.0).toDouble();
     imageStrength.value = clamped;
     await _hive.setSetting(AppConstants.keyImageStrength, clamped);
+  }
+
+  Future<void> setControlNetEnabled(bool value) async {
+    controlNetEnabled.value = value;
+    await _hive.setSetting(AppConstants.keyControlNetEnabled, value);
+  }
+
+  Future<void> setControlStrength(double value) async {
+    final clamped = value.clamp(0.0, 2.0).toDouble();
+    controlStrength.value = clamped;
+    await _hive.setSetting(AppConstants.keyControlStrength, clamped);
   }
 
   Future<void> setThemeMode(ThemeMode mode) async {

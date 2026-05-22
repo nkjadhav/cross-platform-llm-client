@@ -56,6 +56,10 @@ dependencies:
     path: local_plugins/flutter_litert_lm
   gal: ^2.3.2
   syncfusion_flutter_pdf: ^33.2.6
+  # On-device pose detection for ControlNet OpenPose reference rendering.
+  google_mlkit_pose_detection: ^0.14.0
+  # Inline video player for cloud-generated video responses.
+  video_player: ^2.9.2
 
 dev_dependencies:
   flutter_test:

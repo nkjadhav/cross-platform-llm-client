@@ -54,6 +54,13 @@ class AppConstants {
   static const String keyServerNgrokDomain = 'server_ngrok_domain';
   static const String keyImageSteps = 'image_steps';
   static const String keyImageStrength = 'image_strength';
+  static const String keyControlNetEnabled = 'controlnet_enabled';
+  static const String keyControlNetPath = 'controlnet_path';
+  static const String keyControlNetName = 'controlnet_name';
+  static const String keyControlStrength = 'controlnet_strength';
+  // Cloud video provider keys (Replicate covers Wan/Hunyuan/CogVideoX/Ray2).
+  static const String keyReplicateKey = 'replicate_api_key';
+  static const String keyReplicateVideoModel = 'replicate_video_model';
 
   // Default Model Config
   static const double defaultTemperature = 0.7;
@@ -63,6 +70,10 @@ class AppConstants {
   static const int defaultImageSteps = 4;
   // img2img denoising strength: 0.0 = identical to reference, 1.0 = ignore reference.
   static const double defaultImageStrength = 0.75;
+  // ControlNet conditioning strength: 1.0 fully obeys the control image.
+  static const double defaultControlStrength = 1.0;
+  // Replicate Wan-2.5 i2v — image-to-video, fast, ~5s clips.
+  static const String defaultReplicateVideoModel = 'wan-video/wan-2.5-i2v';
 
   // System Prompt (compact for small context models)
   static const String systemPrompt =
@@ -269,6 +280,16 @@ class AppConstants {
       'size': '2.0 GB',
       'description': 'Highly versatile Anime / Stylized image generator',
       'template': 'sd',
+    },
+    {
+      'name': 'ControlNet OpenPose (SD 1.5)',
+      'filename': 'control_v11p_sd15_openpose.safetensors',
+      'url':
+          'https://huggingface.co/comfyanonymous/ControlNet-v1-1_fp16_safetensors/resolve/main/control_v11p_sd15_openpose_fp16.safetensors',
+      'size': '722 MB',
+      'description':
+          'Pose-conditioned generation — pair with any SD 1.5 base model for "same posture, new scene"',
+      'template': 'controlnet',
     },
   ];
 

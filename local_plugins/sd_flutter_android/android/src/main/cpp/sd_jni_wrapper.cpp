@@ -82,7 +82,7 @@ void sd_progress_cb(int step, int steps, float time, void* data) {
 
 extern "C" JNIEXPORT jboolean JNICALL
 Java_com_example_sd_1flutter_1android_SdFlutterAndroidPlugin_initModel(
-    JNIEnv* env, jobject thiz, jstring model_path) {
+    JNIEnv* env, jobject thiz, jstring model_path, jstring control_net_path) {
 
     if (g_sd_ctx) {
         free_sd_ctx(g_sd_ctx);
@@ -90,6 +90,9 @@ Java_com_example_sd_1flutter_1android_SdFlutterAndroidPlugin_initModel(
     }
 
     const char* path = env->GetStringUTFChars(model_path, nullptr);
+    const char* cn_path = control_net_path != nullptr
+        ? env->GetStringUTFChars(control_net_path, nullptr)
+        : nullptr;
 
     sd_set_log_callback(sd_log_cb, nullptr);
     sd_set_progress_callback(sd_progress_cb, nullptr);
@@ -97,6 +100,11 @@ Java_com_example_sd_1flutter_1android_SdFlutterAndroidPlugin_initModel(
     sd_ctx_params_t params;
     sd_ctx_params_init(&params);
     params.model_path = path;
+
+    if (cn_path != nullptr && cn_path[0] != '\0') {
+        params.control_net_path = cn_path;
+        LOGI("Loading ControlNet from: %s", cn_path);
+    }
 
     // Limit threads on mobile to reduce memory pressure and thermal throttling.
     int cores = sd_get_num_physical_cores();
@@ -109,6 +117,7 @@ Java_com_example_sd_1flutter_1android_SdFlutterAndroidPlugin_initModel(
     g_sd_ctx = new_sd_ctx(&params);
 
     env->ReleaseStringUTFChars(model_path, path);
+    if (cn_path != nullptr) env->ReleaseStringUTFChars(control_net_path, cn_path);
 
     return g_sd_ctx != nullptr ? JNI_TRUE : JNI_FALSE;
 }
@@ -117,7 +126,9 @@ extern "C" JNIEXPORT jbyteArray JNICALL
 Java_com_example_sd_1flutter_1android_SdFlutterAndroidPlugin_generateImage(
     JNIEnv* env, jobject thiz, jstring prompt, jint steps, jobject callback,
     jbyteArray reference_image, jint reference_width, jint reference_height,
-    jfloat strength) {
+    jfloat strength,
+    jbyteArray control_image, jint control_width, jint control_height,
+    jfloat control_strength) {
 
     if (!g_sd_ctx) {
         LOGE("SD context not initialized");
@@ -151,7 +162,6 @@ Java_com_example_sd_1flutter_1android_SdFlutterAndroidPlugin_generateImage(
     // img2img: caller provides a raw RGB buffer (width*height*3 bytes) already
     // resized on the Dart side. Keep the byte buffer alive for the duration of
     // generate_image() — sd.cpp reads from it during sampling.
-    jbyte* ref_bytes = nullptr;
     std::vector<uint8_t> ref_buf;
     if (reference_image != nullptr && reference_width > 0 && reference_height > 0) {
         const jsize ref_len = env->GetArrayLength(reference_image);
@@ -169,6 +179,29 @@ Java_com_example_sd_1flutter_1android_SdFlutterAndroidPlugin_generateImage(
             params.strength = strength;
             LOGI("img2img: reference %dx%d, strength=%.2f",
                  reference_width, reference_height, strength);
+        }
+    }
+
+    // ControlNet conditioning image (e.g. OpenPose stick figure). Same
+    // keep-alive contract as the init_image buffer above.
+    std::vector<uint8_t> control_buf;
+    if (control_image != nullptr && control_width > 0 && control_height > 0) {
+        const jsize cn_len = env->GetArrayLength(control_image);
+        const size_t cn_expected = (size_t)control_width * control_height * 3;
+        if ((size_t)cn_len != cn_expected) {
+            LOGE("ControlNet image size mismatch: got %d, expected %zu",
+                 cn_len, cn_expected);
+        } else {
+            control_buf.resize(cn_expected);
+            env->GetByteArrayRegion(control_image, 0, cn_len,
+                                    reinterpret_cast<jbyte*>(control_buf.data()));
+            params.control_cond.width = (uint32_t)control_width;
+            params.control_cond.height = (uint32_t)control_height;
+            params.control_cond.channel = 3;
+            params.control_cond.data = control_buf.data();
+            params.control_strength = control_strength;
+            LOGI("ControlNet: cond %dx%d, strength=%.2f",
+                 control_width, control_height, control_strength);
         }
     }
 

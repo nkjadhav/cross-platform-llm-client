@@ -10,13 +10,16 @@ class SdFlutterAndroid {
     return _channel.invokeMethod<String>('getPlatformVersion');
   }
 
-  static Future<dynamic> initModelRaw(String path) async {
-    final result = await _channel.invokeMethod<dynamic>('initModel', {'path': path});
+  static Future<dynamic> initModelRaw(String path, {String? controlNetPath}) async {
+    final result = await _channel.invokeMethod<dynamic>('initModel', {
+      'path': path,
+      'controlNetPath': controlNetPath ?? '',
+    });
     return result;
   }
 
-  static Future<bool> initModel(String path) async {
-    final result = await initModelRaw(path);
+  static Future<bool> initModel(String path, {String? controlNetPath}) async {
+    final result = await initModelRaw(path, controlNetPath: controlNetPath);
     if (result is bool) {
       return result;
     }
@@ -46,6 +49,10 @@ class SdFlutterAndroid {
     int referenceWidth = 0,
     int referenceHeight = 0,
     double strength = 0.75,
+    Uint8List? controlImage,
+    int controlWidth = 0,
+    int controlHeight = 0,
+    double controlStrength = 1.0,
   }) async {
     _ensureInitialized();
     _onProgress = onProgress;
@@ -57,6 +64,10 @@ class SdFlutterAndroid {
       'referenceWidth': referenceWidth,
       'referenceHeight': referenceHeight,
       'strength': strength,
+      'controlImage': controlImage,
+      'controlWidth': controlWidth,
+      'controlHeight': controlHeight,
+      'controlStrength': controlStrength,
     });
     return bytes;
   }

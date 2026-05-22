@@ -212,9 +212,16 @@ class ModelController extends GetxController {
 
   bool isImageModel(AiModel model) {
     final lower = model.filename.toLowerCase();
+    if (isControlNetModel(model)) return false;
     return model.runtime == AiModel.runtimeSd ||
         lower.endsWith('.safetensors') ||
         model.template == 'sd';
+  }
+
+  bool isControlNetModel(AiModel model) {
+    if (model.template == 'controlnet') return true;
+    final lower = model.filename.toLowerCase();
+    return lower.contains('control_v') || lower.contains('controlnet');
   }
 
   bool isLiteRtModel(AiModel model) {
@@ -426,14 +433,36 @@ class ModelController extends GetxController {
     }
     if (isLiteRt && !await _confirmLiteRtGpuWarning()) return;
 
-    if (isImageModel(model ?? AiModel(
+    final modelOrPlaceholder = model ?? AiModel(
           name: filename,
           filename: filename,
           url: '',
           size: '',
           description: '',
           template: '',
-        ))) {
+        );
+
+    // ControlNet models aren't "loaded" themselves — they're attached during
+    // SD base-model init. Record the path so LocalImageService picks them up.
+    if (isControlNetModel(modelOrPlaceholder)) {
+      await _hive.setSetting(AppConstants.keyControlNetPath, path);
+      await _hive.setSetting(AppConstants.keyControlNetName,
+          modelOrPlaceholder.name.isEmpty ? filename : modelOrPlaceholder.name);
+      await _hive.setSetting(AppConstants.keyControlNetEnabled, true);
+      // Refresh the settings controller cache so the toggle reflects reality.
+      Get.find<SettingsController>().syncFromHive();
+      Get.snackbar(
+        'ControlNet Selected',
+        'Will be applied next time you load an SD base model. Toggle it in Settings.',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: const Color(0xFF34C759).withValues(alpha: 0.15),
+        colorText: const Color(0xFF34C759),
+        duration: const Duration(seconds: 4),
+      );
+      return;
+    }
+
+    if (isImageModel(modelOrPlaceholder)) {
       final result = await _localImage.loadModel(path, modelName: filename);
       final isError = !_localImage.isModelLoaded.value;
       Get.snackbar(
