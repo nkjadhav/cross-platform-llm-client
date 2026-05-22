@@ -36,10 +36,14 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Set up Android SDK / NDK
+      - name: Set up Android SDK
+        # Intentionally NOT pinning an NDK here. Flutter's gradle plugin
+        # downloads the NDK version it wants (flutter.ndkVersion) on first
+        # use; pinning a mismatched version triggers a second download +
+        # version-skew errors that surface as confusing failures.
         uses: android-actions/setup-android@v3
         with:
-          packages: 'platform-tools platforms;android-35 build-tools;35.0.0 ndk;27.0.12077973 cmake;3.22.1'
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0 cmake;3.22.1'
 
       - name: Cache pub packages
         uses: actions/cache@v4
@@ -80,20 +84,41 @@ jobs:
           test -f stable-diffusion.cpp/include/stable-diffusion.h || \
             (echo "FATAL: stable-diffusion.h not found after clone" && exit 1)
 
+      - name: Configure git identity
+        # Some build tools (gradle, cmake) shell out to git internally and
+        # error if user.email is unset.
+        run: |
+          git config --global user.email "ci@example.com"
+          git config --global user.name "ci"
+
       - name: flutter pub get
         run: flutter pub get
+
+      - name: flutter doctor (diagnostics)
+        # Prints SDK / NDK / cmdline-tools / Java versions. If the next step
+        # fails, this block tells us exactly what's mismatched.
+        run: flutter doctor -v
 
       - name: Build debug APK
         env:
           GRADLE_OPTS: -Xmx4g -Dorg.gradle.daemon=false
-        run: flutter build apk --debug
+        run: flutter build apk --debug --verbose 2>&1 | tee build.log
 
       - name: Upload APK artifact
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: privatelm-debug-${{ github.sha }}
           path: build/app/outputs/flutter-apk/app-debug.apk
           retention-days: 30
+
+      - name: Upload build log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log-${{ github.sha }}
+          path: build.log
+          retention-days: 14
 
   # ── RELEASE APK ────────────────────────────────────────────────────────────
   # Fires on `release: created` events (i.e. when you publish a GitHub Release,
@@ -121,10 +146,14 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Set up Android SDK / NDK
+      - name: Set up Android SDK
+        # Intentionally NOT pinning an NDK here. Flutter's gradle plugin
+        # downloads the NDK version it wants (flutter.ndkVersion) on first
+        # use; pinning a mismatched version triggers a second download +
+        # version-skew errors that surface as confusing failures.
         uses: android-actions/setup-android@v3
         with:
-          packages: 'platform-tools platforms;android-35 build-tools;35.0.0 ndk;27.0.12077973 cmake;3.22.1'
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0 cmake;3.22.1'
 
       - name: Cache pub packages
         uses: actions/cache@v4
@@ -178,13 +207,21 @@ jobs:
           keyPassword=$ANDROID_KEY_PASSWORD
           EOF
 
+      - name: Configure git identity
+        run: |
+          git config --global user.email "ci@example.com"
+          git config --global user.name "ci"
+
       - name: flutter pub get
         run: flutter pub get
+
+      - name: flutter doctor (diagnostics)
+        run: flutter doctor -v
 
       - name: Build release APK
         env:
           GRADLE_OPTS: -Xmx4g -Dorg.gradle.daemon=false
-        run: flutter build apk --release
+        run: flutter build apk --release --verbose 2>&1 | tee build.log
 
       - name: Rename APK with version
         run: |
