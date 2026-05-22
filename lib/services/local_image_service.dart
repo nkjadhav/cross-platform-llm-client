@@ -84,6 +84,8 @@ class LocalImageService extends GetxService {
 
   Future<Uint8List?> generateImage({
     required String prompt,
+    String? referenceImagePath,
+    double? strength,
     void Function(int step, int totalSteps)? onProgress,
   }) async {
     if (!isModelLoaded.value) return null;
@@ -94,10 +96,31 @@ class LocalImageService extends GetxService {
       final steps = _hive.getSetting<int>(AppConstants.keyImageSteps,
           defaultValue: AppConstants.defaultImageSteps) ??
           AppConstants.defaultImageSteps;
-      
+
+      Uint8List? referenceRgb;
+      int referenceWidth = 0;
+      int referenceHeight = 0;
+      if (referenceImagePath != null && referenceImagePath.isNotEmpty) {
+        final prepared = await _prepareReferenceImage(referenceImagePath);
+        if (prepared != null) {
+          referenceRgb = prepared.rgbBytes;
+          referenceWidth = prepared.width;
+          referenceHeight = prepared.height;
+        }
+      }
+
+      final effectiveStrength = strength ??
+          _hive.getSetting<double>(AppConstants.keyImageStrength,
+              defaultValue: AppConstants.defaultImageStrength) ??
+          AppConstants.defaultImageStrength;
+
       final rawBytes = await SdFlutterAndroid.generateImage(
-        prompt, 
+        prompt,
         steps: steps,
+        referenceImage: referenceRgb,
+        referenceWidth: referenceWidth,
+        referenceHeight: referenceHeight,
+        strength: effectiveStrength,
         onProgress: (step, total) {
           onProgress?.call(step, total);
         }
@@ -126,4 +149,49 @@ class LocalImageService extends GetxService {
       return null;
     }
   }
+
+  /// Decode an on-disk image, resize to 512x512, and return as raw RGB bytes
+  /// matching the layout expected by `sd_image_t` on the JNI side.
+  Future<_PreparedReference?> _prepareReferenceImage(String path) async {
+    try {
+      final file = File(path);
+      if (!await file.exists()) {
+        print('[LocalImageService] Reference image not found: $path');
+        return null;
+      }
+      final raw = await file.readAsBytes();
+      final decoded = img.decodeImage(raw);
+      if (decoded == null) {
+        print('[LocalImageService] Could not decode reference image: $path');
+        return null;
+      }
+      // SD 1.5 generates at 512x512; matching the reference avoids letterboxing
+      // and keeps the strength parameter behaving predictably.
+      const target = 512;
+      final resized = decoded.width == target && decoded.height == target
+          ? decoded
+          : img.copyResize(decoded,
+              width: target, height: target, interpolation: img.Interpolation.cubic);
+
+      // Pack into tightly-packed RGB (no alpha) since sd_image_t expects channel=3.
+      final rgb = Uint8List(target * target * 3);
+      var i = 0;
+      for (final p in resized) {
+        rgb[i++] = p.r.toInt();
+        rgb[i++] = p.g.toInt();
+        rgb[i++] = p.b.toInt();
+      }
+      return _PreparedReference(rgb, target, target);
+    } catch (e) {
+      print('[LocalImageService] Reference image prep failed: $e');
+      return null;
+    }
+  }
+}
+
+class _PreparedReference {
+  final Uint8List rgbBytes;
+  final int width;
+  final int height;
+  _PreparedReference(this.rgbBytes, this.width, this.height);
 }

@@ -41,6 +41,7 @@ class SettingsController extends GetxController {
   final contextSize = 2048.obs;
   final liteRtPerformanceMode = AppConstants.defaultLiteRtPerformanceMode.obs;
   final imageSteps = 4.obs;
+  final imageStrength = AppConstants.defaultImageStrength.obs;
 
   // Persistent text controllers for settings fields
   final openaiKeyController = TextEditingController();
@@ -166,6 +167,10 @@ class SettingsController extends GetxController {
     imageSteps.value = _hive.getSetting(AppConstants.keyImageSteps,
             defaultValue: AppConstants.defaultImageSteps) ??
         AppConstants.defaultImageSteps;
+    imageStrength.value = _hive.getSetting<double>(
+            AppConstants.keyImageStrength,
+            defaultValue: AppConstants.defaultImageStrength) ??
+        AppConstants.defaultImageStrength;
 
     // Sync controllers with loaded values
     openaiKeyController.text = openaiKey.value;
@@ -485,6 +490,12 @@ class SettingsController extends GetxController {
   Future<void> setImageSteps(int value) async {
     imageSteps.value = value;
     await _hive.setSetting(AppConstants.keyImageSteps, value);
+  }
+
+  Future<void> setImageStrength(double value) async {
+    final clamped = value.clamp(0.0, 1.0).toDouble();
+    imageStrength.value = clamped;
+    await _hive.setSetting(AppConstants.keyImageStrength, clamped);
   }
 
   Future<void> setThemeMode(ThemeMode mode) async {

@@ -38,13 +38,25 @@ class SdFlutterAndroid {
     });
   }
 
-  static Future<Uint8List?> generateImage(String prompt, {int steps = 20, Function(int step, int total)? onProgress}) async {
+  static Future<Uint8List?> generateImage(
+    String prompt, {
+    int steps = 20,
+    Function(int step, int total)? onProgress,
+    Uint8List? referenceImage,
+    int referenceWidth = 0,
+    int referenceHeight = 0,
+    double strength = 0.75,
+  }) async {
     _ensureInitialized();
     _onProgress = onProgress;
 
     final bytes = await _channel.invokeMethod<Uint8List>('generateImage', {
       'prompt': prompt,
       'steps': steps,
+      'referenceImage': referenceImage,
+      'referenceWidth': referenceWidth,
+      'referenceHeight': referenceHeight,
+      'strength': strength,
     });
     return bytes;
   }

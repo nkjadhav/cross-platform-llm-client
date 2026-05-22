@@ -24,7 +24,15 @@ class SdFlutterAndroidPlugin: FlutterPlugin, MethodCallHandler {
 
   // Native methods (linked to sd_jni_wrapper.cpp)
   private external fun initModel(path: String): Boolean
-  private external fun generateImage(prompt: String, steps: Int, callback: ProgressCallback): ByteArray?
+  private external fun generateImage(
+    prompt: String,
+    steps: Int,
+    callback: ProgressCallback,
+    referenceImage: ByteArray?,
+    referenceWidth: Int,
+    referenceHeight: Int,
+    strength: Float,
+  ): ByteArray?
   private external fun unloadModel()
 
   init {
@@ -59,11 +67,23 @@ class SdFlutterAndroidPlugin: FlutterPlugin, MethodCallHandler {
       "generateImage" -> {
         val prompt = call.argument<String>("prompt")
         val steps = call.argument<Int>("steps") ?: 20
+        val referenceImage = call.argument<ByteArray>("referenceImage")
+        val referenceWidth = call.argument<Int>("referenceWidth") ?: 0
+        val referenceHeight = call.argument<Int>("referenceHeight") ?: 0
+        val strength = (call.argument<Double>("strength") ?: 0.75).toFloat()
         if (prompt != null) {
           scope.launch {
             try {
               val callback = ProgressCallback()
-              val bytes = generateImage(prompt, steps, callback)
+              val bytes = generateImage(
+                prompt,
+                steps,
+                callback,
+                referenceImage,
+                referenceWidth,
+                referenceHeight,
+                strength,
+              )
               withContext(Dispatchers.Main) {
                 if (bytes != null) {
                   result.success(bytes)

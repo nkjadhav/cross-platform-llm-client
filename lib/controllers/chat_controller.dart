@@ -466,6 +466,7 @@ class ChatController extends GetxController {
           final genStart = DateTime.now();
           final pngBytes = await localImage.generateImage(
             prompt: text,
+            referenceImagePath: imagePath,
             onProgress: (step, total) {
               imageGenStep.value = step;
               imageGenTotal.value = total;

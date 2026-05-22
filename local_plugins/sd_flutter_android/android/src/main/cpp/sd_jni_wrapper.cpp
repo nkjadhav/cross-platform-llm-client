@@ -115,7 +115,9 @@ Java_com_example_sd_1flutter_1android_SdFlutterAndroidPlugin_initModel(
 
 extern "C" JNIEXPORT jbyteArray JNICALL
 Java_com_example_sd_1flutter_1android_SdFlutterAndroidPlugin_generateImage(
-    JNIEnv* env, jobject thiz, jstring prompt, jint steps, jobject callback) {
+    JNIEnv* env, jobject thiz, jstring prompt, jint steps, jobject callback,
+    jbyteArray reference_image, jint reference_width, jint reference_height,
+    jfloat strength) {
 
     if (!g_sd_ctx) {
         LOGE("SD context not initialized");
@@ -144,6 +146,30 @@ Java_com_example_sd_1flutter_1android_SdFlutterAndroidPlugin_generateImage(
         g_model_path.find("lcm") != std::string::npos) {
         params.sample_params.guidance.txt_cfg = 1.0f;
         LOGI("Distilled model detected — using CFG=1.0");
+    }
+
+    // img2img: caller provides a raw RGB buffer (width*height*3 bytes) already
+    // resized on the Dart side. Keep the byte buffer alive for the duration of
+    // generate_image() — sd.cpp reads from it during sampling.
+    jbyte* ref_bytes = nullptr;
+    std::vector<uint8_t> ref_buf;
+    if (reference_image != nullptr && reference_width > 0 && reference_height > 0) {
+        const jsize ref_len = env->GetArrayLength(reference_image);
+        const size_t expected = (size_t)reference_width * reference_height * 3;
+        if ((size_t)ref_len != expected) {
+            LOGE("Reference image size mismatch: got %d, expected %zu", ref_len, expected);
+        } else {
+            ref_buf.resize(expected);
+            env->GetByteArrayRegion(reference_image, 0, ref_len,
+                                    reinterpret_cast<jbyte*>(ref_buf.data()));
+            params.init_image.width = (uint32_t)reference_width;
+            params.init_image.height = (uint32_t)reference_height;
+            params.init_image.channel = 3;
+            params.init_image.data = ref_buf.data();
+            params.strength = strength;
+            LOGI("img2img: reference %dx%d, strength=%.2f",
+                 reference_width, reference_height, strength);
+        }
     }
 
     LOGI("Generating image for prompt: %s", p_str);

@@ -53,6 +53,7 @@ class AppConstants {
   static const String keyServerNgrokToken = 'server_ngrok_token';
   static const String keyServerNgrokDomain = 'server_ngrok_domain';
   static const String keyImageSteps = 'image_steps';
+  static const String keyImageStrength = 'image_strength';
 
   // Default Model Config
   static const double defaultTemperature = 0.7;
@@ -60,6 +61,8 @@ class AppConstants {
   static const int defaultContextSize = 2048;
   static const String defaultLiteRtPerformanceMode = 'auto_fast';
   static const int defaultImageSteps = 4;
+  // img2img denoising strength: 0.0 = identical to reference, 1.0 = ignore reference.
+  static const double defaultImageStrength = 0.75;
 
   // System Prompt (compact for small context models)
   static const String systemPrompt =

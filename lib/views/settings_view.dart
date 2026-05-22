@@ -195,6 +195,20 @@ class SettingsView extends GetView<SettingsController> {
                   displayValue: controller.imageSteps.value.toString(),
                   icon: Icons.image_rounded,
                   warning: 'More steps = better quality but MUCH slower!'),
+              const SizedBox(height: 10),
+              _buildSlider(context, isDark,
+                  label: 'Reference Image Strength',
+                  value: controller.imageStrength.value,
+                  min: 0.0,
+                  max: 1.0,
+                  divisions: 20,
+                  safeMax: 1.0,
+                  onChanged: (v) => controller.setImageStrength(v),
+                  displayValue:
+                      controller.imageStrength.value.toStringAsFixed(2),
+                  icon: Icons.tune_rounded,
+                  warning:
+                      'Lower = stays closer to reference. Higher = more creative.'),
               const SizedBox(height: 24),
               _sectionLabel(context, 'ABOUT'),
               _appleGroupedCard(context, isDark, children: [
