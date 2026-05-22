@@ -104,16 +104,32 @@ jobs:
           GRADLE_OPTS: -Xmx4g -Dorg.gradle.daemon=false
         run: flutter build apk --debug --verbose 2>&1 | tee build.log
 
+      - name: Locate APK output
+        # Help the next step's glob match by reporting exactly where the APK
+        # landed. Flutter has moved this path between versions
+        # (build/app/outputs/flutter-apk vs build/app/outputs/apk/debug).
+        if: always()
+        run: |
+          echo "== find APKs under build/ =="
+          find build -name '*.apk' 2>/dev/null || true
+
       - name: Upload APK artifact
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: privatelm-debug-${{ github.sha }}
-          path: build/app/outputs/flutter-apk/app-debug.apk
+          # Catch both the legacy and newer Flutter output paths.
+          path: |
+            build/app/outputs/flutter-apk/*.apk
+            build/app/outputs/apk/debug/*.apk
+            build/app/outputs/apk/release/*.apk
+          if-no-files-found: error
           retention-days: 30
 
-      - name: Upload build log on failure
-        if: failure()
+      - name: Upload build log
+        # Always upload so we have something to look at if the build is
+        # silently producing the wrong artifact path.
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: build-log-${{ github.sha }}
@@ -223,12 +239,19 @@ jobs:
           GRADLE_OPTS: -Xmx4g -Dorg.gradle.daemon=false
         run: flutter build apk --release --verbose 2>&1 | tee build.log
 
-      - name: Rename APK with version
+      - name: Locate + rename APK
         run: |
-          mv build/app/outputs/flutter-apk/app-release.apk \
-             build/app/outputs/flutter-apk/PrivateLM-${{ github.event.release.tag_name }}.apk
+          set -e
+          # Find wherever Flutter parked the release APK and rename it.
+          src=$(find build -name 'app-release.apk' | head -n 1)
+          if [ -z "$src" ]; then
+            echo "FATAL: no app-release.apk found under build/" && exit 1
+          fi
+          dst="build/PrivateLM-${{ github.event.release.tag_name }}.apk"
+          mv "$src" "$dst"
+          echo "APK_PATH=$dst" >> "$GITHUB_ENV"
 
       - name: Upload APK to release
         uses: softprops/action-gh-release@v2
         with:
-          files: build/app/outputs/flutter-apk/PrivateLM-${{ github.event.release.tag_name }}.apk
+          files: ${{ env.APK_PATH }}
