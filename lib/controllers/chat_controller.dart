@@ -542,9 +542,13 @@ class ChatController extends GetxController {
       imageGenTotal.value = 0;
 
       String? outImageBase64;
+      String? outVideoPath;
       if (rawResponse.startsWith('[IMAGE_BASE64]')) {
         outImageBase64 = rawResponse.substring('[IMAGE_BASE64]'.length);
         rawResponse = 'Here is your generated image:';
+      } else if (rawResponse.startsWith('[VIDEO_PATH]')) {
+        outVideoPath = rawResponse.substring('[VIDEO_PATH]'.length);
+        rawResponse = 'Here is your generated video:';
       }
 
       // Display response directly (no command processing)
@@ -554,6 +558,7 @@ class ChatController extends GetxController {
         role: 'assistant',
         content: rawResponse,
         imageBase64: outImageBase64,
+        videoPath: outVideoPath,
         tokensPerSec: tps,
         thoughtDurationSeconds: thoughtDurationSeconds,
       );

@@ -1,7 +1,9 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:video_player/video_player.dart';
 import '../models/chat_message.dart';
 import '../utils/thought_parser.dart';
 import 'attachment_preview.dart';
@@ -75,6 +77,16 @@ class ChatBubble extends StatelessWidget {
                         ),
                       ),
                     ),
+                  ),
+                ),
+
+              // Generated video attachment
+              if (message.videoPath != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(14),
+                    child: ChatVideoPlayer(path: message.videoPath!),
                   ),
                 ),
 
@@ -230,5 +242,85 @@ class ChatBubble extends StatelessWidget {
         .replaceAll('<|im_end|>', '')
         .replaceAll('<|end|>', '')
         .trim();
+  }
+}
+
+/// Auto-initialising video player for messages that carry a `videoPath`.
+/// Loops the clip and exposes a tap-to-play/pause overlay.
+class ChatVideoPlayer extends StatefulWidget {
+  final String path;
+  const ChatVideoPlayer({super.key, required this.path});
+
+  @override
+  State<ChatVideoPlayer> createState() => _ChatVideoPlayerState();
+}
+
+class _ChatVideoPlayerState extends State<ChatVideoPlayer> {
+  VideoPlayerController? _controller;
+  bool _ready = false;
+  bool _failed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final file = File(widget.path);
+    if (!file.existsSync()) {
+      _failed = true;
+      return;
+    }
+    final c = VideoPlayerController.file(file);
+    _controller = c;
+    c.setLooping(true);
+    c.initialize().then((_) {
+      if (!mounted) return;
+      setState(() => _ready = true);
+      c.play();
+    }).catchError((_) {
+      if (!mounted) return;
+      setState(() => _failed = true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_failed) {
+      return Container(
+        height: 180,
+        color: Colors.black12,
+        alignment: Alignment.center,
+        child: const Icon(Icons.videocam_off_rounded, size: 32),
+      );
+    }
+    if (!_ready || _controller == null) {
+      return Container(
+        height: 180,
+        color: Colors.black12,
+        alignment: Alignment.center,
+        child: const CircularProgressIndicator(strokeWidth: 2),
+      );
+    }
+    final c = _controller!;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          c.value.isPlaying ? c.pause() : c.play();
+        });
+      },
+      child: AspectRatio(
+        aspectRatio: c.value.aspectRatio,
+        child: Stack(alignment: Alignment.center, children: [
+          VideoPlayer(c),
+          if (!c.value.isPlaying)
+            const Icon(Icons.play_circle_fill_rounded,
+                size: 56, color: Colors.white70),
+        ]),
+      ),
+    );
   }
 }

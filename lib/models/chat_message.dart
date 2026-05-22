@@ -5,6 +5,7 @@ class ChatMessage {
   final String content;
   final String? imageBase64; // For multimodal
   final String? imagePath;
+  final String? videoPath; // For cloud-generated video responses
   final String? fileName;
   final String? fileContent;
   final String? filePath;
@@ -23,6 +24,7 @@ class ChatMessage {
     required this.content,
     this.imageBase64,
     this.imagePath,
+    this.videoPath,
     this.fileName,
     this.fileContent,
     this.filePath,
@@ -42,6 +44,7 @@ class ChatMessage {
         'content': content,
         'imageBase64': imageBase64,
         'imagePath': imagePath,
+        'videoPath': videoPath,
         'fileName': fileName,
         'fileContent': fileContent,
         'filePath': filePath,
@@ -61,6 +64,7 @@ class ChatMessage {
         content: map['content'] ?? '',
         imageBase64: map['imageBase64'],
         imagePath: map['imagePath'],
+        videoPath: map['videoPath'],
         fileName: map['fileName'],
         fileContent: map['fileContent'],
         filePath: map['filePath'],

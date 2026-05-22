@@ -1,6 +1,10 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
 import '../core/constants.dart';
 import 'hive_service.dart';
 import 'app_log_service.dart';
@@ -29,6 +33,8 @@ class CloudService extends GetxService {
         return _hive.getSetting(AppConstants.keyOpenRouterKey) ?? '';
       case 'custom':
         return _hive.getSetting(AppConstants.keyCustomCloudKey) ?? '';
+      case 'replicate':
+        return _hive.getSetting(AppConstants.keyReplicateKey) ?? '';
       default:
         return _hive.getSetting(AppConstants.keyOpenaiKey) ?? '';
     }
@@ -55,6 +61,9 @@ class CloudService extends GetxService {
             'openai/gpt-4o-mini';
       case 'custom':
         return _hive.getSetting(AppConstants.keyCustomCloudModel) ?? '';
+      case 'replicate':
+        return _hive.getSetting(AppConstants.keyReplicateVideoModel) ??
+            AppConstants.defaultReplicateVideoModel;
       default:
         return _hive.getSetting(AppConstants.keyOpenaiModel) ?? 'gpt-5.2';
     }
@@ -117,6 +126,8 @@ class CloudService extends GetxService {
         case 'custom':
           return await _sendCustomOpenAICompatible(
               messages, imageBase64, temperature, maxTokens);
+        case 'replicate':
+          return await _generateReplicateVideo(messages, imageBase64);
         default:
           return await _sendOpenAI(
               messages, imageBase64, temperature, maxTokens);
@@ -650,5 +661,104 @@ class CloudService extends GetxService {
     }
 
     return 'ERROR: No image generated.';
+  }
+
+  /// Replicate predictions API: POST → poll → fetch mp4 → write to a temp file.
+  /// Returns `[VIDEO_PATH]<absolute path>` on success, mirroring the
+  /// `[IMAGE_BASE64]` convention used elsewhere in this service so the
+  /// existing ChatController can render the result without new code paths.
+  Future<String> _generateReplicateVideo(
+    List<Map<String, String>> messages,
+    String? imageBase64,
+  ) async {
+    if (kIsWeb) {
+      return 'ERROR: Video generation requires local file storage and is '
+          'not available on web yet.';
+    }
+
+    final userMessages = messages.where((m) => m['role'] == 'user').toList();
+    if (userMessages.isEmpty) return 'ERROR: No prompt for video generation.';
+    final prompt = userMessages.last['content'] ?? '';
+
+    final model = _model;
+    if (model.isEmpty || !model.contains('/')) {
+      return 'ERROR: Set a Replicate model (e.g. wan-video/wan-2.5-i2v) in Settings.';
+    }
+
+    final input = <String, dynamic>{'prompt': prompt};
+    if (imageBase64 != null && imageBase64.isNotEmpty) {
+      // Replicate accepts data URLs for image inputs.
+      input['image'] = 'data:image/jpeg;base64,$imageBase64';
+    }
+
+    try {
+      // 1) Kick off the prediction.
+      final createResp = await http.post(
+        Uri.parse('https://api.replicate.com/v1/models/$model/predictions'),
+        headers: {
+          'Authorization': 'Bearer $_apiKey',
+          'Content-Type': 'application/json',
+          'Prefer': 'wait=5', // try to get a result inline if it's quick
+        },
+        body: jsonEncode({'input': input}),
+      );
+      if (createResp.statusCode >= 400) {
+        return 'ERROR: Replicate ${createResp.statusCode} — ${createResp.body}';
+      }
+      var prediction = jsonDecode(createResp.body) as Map<String, dynamic>;
+
+      // 2) Poll until terminal status. Replicate uses 'succeeded' | 'failed' |
+      //    'canceled'. The `urls.get` self-link is the canonical poll URL.
+      final getUrl = (prediction['urls'] as Map?)?['get'] as String?;
+      final deadline = DateTime.now().add(const Duration(minutes: 6));
+      while (
+          getUrl != null && DateTime.now().isBefore(deadline) &&
+              prediction['status'] != 'succeeded' &&
+              prediction['status'] != 'failed' &&
+              prediction['status'] != 'canceled') {
+        await Future.delayed(const Duration(seconds: 2));
+        final poll = await http.get(
+          Uri.parse(getUrl),
+          headers: {'Authorization': 'Bearer $_apiKey'},
+        );
+        if (poll.statusCode >= 400) {
+          return 'ERROR: Replicate poll ${poll.statusCode} — ${poll.body}';
+        }
+        prediction = jsonDecode(poll.body) as Map<String, dynamic>;
+      }
+
+      if (prediction['status'] != 'succeeded') {
+        final err = prediction['error'] ?? prediction['status'] ?? 'unknown';
+        return 'ERROR: Replicate prediction did not succeed — $err';
+      }
+
+      // 3) Resolve the output URL. Different models return string vs list.
+      final output = prediction['output'];
+      String? videoUrl;
+      if (output is String) {
+        videoUrl = output;
+      } else if (output is List && output.isNotEmpty) {
+        final first = output.first;
+        if (first is String) videoUrl = first;
+      } else if (output is Map && output['video'] is String) {
+        videoUrl = output['video'] as String;
+      }
+      if (videoUrl == null) {
+        return 'ERROR: Replicate succeeded but returned no video URL.';
+      }
+
+      // 4) Download to a temp file the chat view can mount via video_player.
+      final videoBytes = await http.get(Uri.parse(videoUrl));
+      if (videoBytes.statusCode != 200) {
+        return 'ERROR: Could not download video — HTTP ${videoBytes.statusCode}';
+      }
+      final dir = await getTemporaryDirectory();
+      final file = File(
+          '${dir.path}/replicate_${DateTime.now().millisecondsSinceEpoch}.mp4');
+      await file.writeAsBytes(videoBytes.bodyBytes);
+      return '[VIDEO_PATH]${file.path}';
+    } catch (e) {
+      return 'ERROR: Replicate video request failed — $e';
+    }
   }
 }

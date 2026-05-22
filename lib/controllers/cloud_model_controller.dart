@@ -61,6 +61,14 @@ class CloudModelController extends GetxController {
       icon: Icons.memory_outlined,
     ),
     CloudProviderInfo(
+      id: 'replicate',
+      name: 'Replicate Video',
+      description:
+          'Image-to-video / text-to-video — Wan, Hunyuan, CogVideoX, Ray-2, Veo',
+      icon: Icons.videocam_outlined,
+      supportsFetch: false,
+    ),
+    CloudProviderInfo(
       id: 'custom',
       name: 'Custom API',
       description: 'Manual OpenAI-compatible endpoint',
@@ -126,6 +134,8 @@ class CloudModelController extends GetxController {
         return _settings.googleKey.value;
       case 'nvidia':
         return _settings.nvidiaKey.value;
+      case 'replicate':
+        return _settings.replicateKey.value;
       case 'custom':
         return _settings.customCloudKey.value;
       default:
@@ -293,6 +303,17 @@ class CloudModelController extends GetxController {
     final raw = _hive.getSetting<List>('$_cachePrefix$provider');
     if (raw != null) {
       modelsByProvider[provider] = raw.whereType<String>().toList();
+    } else if (provider == 'replicate') {
+      // Seed a curated short list — Replicate has no flat listing API and
+      // these are the high-signal video models users typically want.
+      modelsByProvider[provider] = const [
+        'wan-video/wan-2.5-i2v',
+        'wan-video/wan-2.5-t2v',
+        'tencent/hunyuan-video',
+        'lightricks/ltx-video',
+        'minimax/video-01',
+        'luma/ray',
+      ];
     }
     final rawTime = _hive.getSetting<String>('$_cacheTimePrefix$provider');
     if (rawTime != null) {

@@ -22,6 +22,7 @@ class SettingsController extends GetxController {
   final stabilityKey = ''.obs;
   final nvidiaKey = ''.obs;
   final openRouterKey = ''.obs;
+  final replicateKey = ''.obs;
   final customCloudName = 'Custom API'.obs;
   final customCloudBaseUrl = ''.obs;
   final customCloudKey = ''.obs;
@@ -32,6 +33,7 @@ class SettingsController extends GetxController {
   final stabilityModel = 'sd3.5-flash'.obs;
   final nvidiaModel = 'meta/llama-3.1-8b-instruct'.obs;
   final openRouterModel = 'openai/gpt-4o-mini'.obs;
+  final replicateVideoModel = AppConstants.defaultReplicateVideoModel.obs;
   final customCloudModel = ''.obs;
   final globalSystemPrompt = AppConstants.systemPrompt.obs;
   final nvidiaModels = <String>[].obs;
@@ -54,6 +56,7 @@ class SettingsController extends GetxController {
   final stabilityKeyController = TextEditingController();
   final nvidiaKeyController = TextEditingController();
   final openRouterKeyController = TextEditingController();
+  final replicateKeyController = TextEditingController();
   final customCloudNameController = TextEditingController();
   final customCloudBaseUrlController = TextEditingController();
   final customCloudKeyController = TextEditingController();
@@ -66,6 +69,7 @@ class SettingsController extends GetxController {
   final stabilityModelController = TextEditingController();
   final nvidiaModelController = TextEditingController();
   final openRouterModelController = TextEditingController();
+  final replicateVideoModelController = TextEditingController();
   final customCloudModelController = TextEditingController();
 
   Timer? _apiKeyDebounceTimer;
@@ -86,6 +90,8 @@ class SettingsController extends GetxController {
     stabilityKeyController.dispose();
     nvidiaKeyController.dispose();
     openRouterKeyController.dispose();
+    replicateKeyController.dispose();
+    replicateVideoModelController.dispose();
     customCloudNameController.dispose();
     customCloudBaseUrlController.dispose();
     customCloudKeyController.dispose();
@@ -123,6 +129,7 @@ class SettingsController extends GetxController {
     stabilityKey.value = _hive.getSetting(AppConstants.keyStabilityKey) ?? '';
     nvidiaKey.value = _hive.getSetting(AppConstants.keyNvidiaKey) ?? '';
     openRouterKey.value = _hive.getSetting(AppConstants.keyOpenRouterKey) ?? '';
+    replicateKey.value = _hive.getSetting(AppConstants.keyReplicateKey) ?? '';
     customCloudName.value = _hive.getSetting(AppConstants.keyCustomCloudName,
             defaultValue: 'Custom API') ??
         'Custom API';
@@ -151,6 +158,10 @@ class SettingsController extends GetxController {
     openRouterModel.value = _hive.getSetting(AppConstants.keyOpenRouterModel,
             defaultValue: 'openai/gpt-4o-mini') ??
         'openai/gpt-4o-mini';
+    replicateVideoModel.value = _hive.getSetting(
+            AppConstants.keyReplicateVideoModel,
+            defaultValue: AppConstants.defaultReplicateVideoModel) ??
+        AppConstants.defaultReplicateVideoModel;
     customCloudModel.value =
         _hive.getSetting(AppConstants.keyCustomCloudModel) ?? '';
     globalSystemPrompt.value = _hive.getSetting(
@@ -209,6 +220,8 @@ class SettingsController extends GetxController {
     stabilityModelController.text = stabilityModel.value;
     nvidiaModelController.text = nvidiaModel.value;
     openRouterModelController.text = openRouterModel.value;
+    replicateKeyController.text = replicateKey.value;
+    replicateVideoModelController.text = replicateVideoModel.value;
     customCloudModelController.text = customCloudModel.value;
   }
 
@@ -226,6 +239,8 @@ class SettingsController extends GetxController {
         return nvidiaKeyController;
       case 'openrouter':
         return openRouterKeyController;
+      case 'replicate':
+        return replicateKeyController;
       case 'custom':
         return customCloudKeyController;
       default:
@@ -247,6 +262,8 @@ class SettingsController extends GetxController {
         return nvidiaModelController;
       case 'openrouter':
         return openRouterModelController;
+      case 'replicate':
+        return replicateVideoModelController;
       case 'custom':
         return customCloudModelController;
       default:
@@ -268,6 +285,8 @@ class SettingsController extends GetxController {
         return nvidiaModel.value;
       case 'openrouter':
         return openRouterModel.value;
+      case 'replicate':
+        return replicateVideoModel.value;
       case 'custom':
         return customCloudModel.value;
       default:
@@ -324,6 +343,11 @@ class SettingsController extends GetxController {
         openRouterKeyController.text = trimmed;
         await _hive.setSetting(AppConstants.keyOpenRouterKey, trimmed);
         break;
+      case 'replicate':
+        replicateKey.value = trimmed;
+        replicateKeyController.text = trimmed;
+        await _hive.setSetting(AppConstants.keyReplicateKey, trimmed);
+        break;
       case 'custom':
         customCloudKey.value = trimmed;
         customCloudKeyController.text = trimmed;
@@ -379,6 +403,11 @@ class SettingsController extends GetxController {
         openRouterModel.value = model;
         openRouterModelController.text = model;
         await _hive.setSetting(AppConstants.keyOpenRouterModel, model);
+        break;
+      case 'replicate':
+        replicateVideoModel.value = model;
+        replicateVideoModelController.text = model;
+        await _hive.setSetting(AppConstants.keyReplicateVideoModel, model);
         break;
       case 'custom':
         customCloudModel.value = model;
