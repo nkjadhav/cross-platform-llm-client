@@ -12,3 +12,6 @@ GeneratedPluginRegistrant.java
 key.properties
 **/*.keystore
 **/*.jks
+# Whitelist the committed debug keystore — see app/build.gradle.kts for why
+# this is checked in. Never whitelist a release keystore.
+!app/debug.keystore

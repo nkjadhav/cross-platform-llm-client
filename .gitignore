@@ -45,6 +45,9 @@ app.*.map.json
 # Keystores and signing
 *.jks
 *.keystore
+# Whitelist the committed debug keystore — see android/app/build.gradle.kts
+# for why this is checked in. Never whitelist a release keystore here.
+!android/app/debug.keystore
 key.properties
 /android/key.properties
 
