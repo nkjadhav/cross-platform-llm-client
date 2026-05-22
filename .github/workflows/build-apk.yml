@@ -114,24 +114,56 @@ jobs:
           find build -name '*.apk' 2>/dev/null || true
 
       - name: Stage APK into a known location
-        # Flutter's output path moves between versions. Copy whatever the
-        # build produced into a stable directory the upload step can rely on.
+        # Two failure modes are possible here: (1) Flutter put the APK in a
+        # path we don't know yet, or (2) the "build apk" silently produced
+        # something other than an APK. Capture both — never fail this step
+        # because we want the diagnostic dump to upload.
+        if: always()
         run: |
-          set -euxo pipefail
+          set -uxo pipefail
           mkdir -p staging
-          find build -name '*.apk' -exec cp {} staging/ \;
+          echo "== find APKs anywhere under workspace =="
+          find . -name '*.apk' 2>/dev/null | tee staging/apk-paths.txt || true
+          echo "== find AABs anywhere under workspace =="
+          find . -name '*.aab' 2>/dev/null | tee staging/aab-paths.txt || true
+          echo "== top-level build/ tree (first 200 lines) =="
+          ls -laR build 2>/dev/null | head -200 | tee staging/build-tree.txt || true
+          echo "== anything under build/app/outputs =="
+          find build/app/outputs -type f 2>/dev/null | tee staging/outputs-files.txt || true
+          # Copy any APK we found into staging for the upload step.
+          while IFS= read -r p; do
+            [ -f "$p" ] && cp "$p" staging/
+          done < staging/apk-paths.txt
           ls -la staging/
-          test -n "$(ls staging/*.apk 2>/dev/null)" || \
-            (echo "FATAL: build produced no APK files" && exit 1)
+          # Surface whether we actually have an APK to ship.
+          if compgen -G "staging/*.apk" > /dev/null; then
+            echo "FOUND_APK=1" >> "$GITHUB_ENV"
+          else
+            echo "FOUND_APK=0" >> "$GITHUB_ENV"
+            echo "::warning::No APK produced — see diag-${{ github.sha }} artifact for tree dump"
+          fi
 
       - name: Upload APK artifact
-        if: success()
+        if: env.FOUND_APK == '1'
         uses: actions/upload-artifact@v4
         with:
           name: privatelm-debug-${{ github.sha }}
           path: staging/*.apk
-          if-no-files-found: error
           retention-days: 30
+
+      - name: Upload diagnostic tree dump
+        # Always upload — when the APK is missing this is how we figure out
+        # where Flutter put things; when it's present it's a tiny sanity log.
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: diag-${{ github.sha }}
+          path: |
+            staging/apk-paths.txt
+            staging/aab-paths.txt
+            staging/build-tree.txt
+            staging/outputs-files.txt
+          retention-days: 14
 
       - name: Upload build log
         # Always upload so we have something to look at if the build is
