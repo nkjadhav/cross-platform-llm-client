@@ -14,6 +14,7 @@ _Generated on pixel 6 with 20 step_
 
 ## What It Does
 
+- **Video Studio** — Generate short videos from a text prompt or animate a base image (text-to-video / image-to-video), à la Grok Imagine. Pick aspect ratio, duration, and model, then preview, save to gallery, or share. Powered by cloud video providers (Replicate, Fal.ai, or a custom endpoint) configured with your own API key.
 - **Local Inference on Android** — Download and run GGUF models directly on your phone using GPU-accelerated inference (Vulkan). No internet required after download.
 - **Cloud API Fallback** — Seamlessly switch to OpenAI, Anthropic, Google Gemini, or Kimi (Moonshot AI) when you need more power or are on unsupported platforms.
 - **Multimodal Chat** — Send text and images in conversations. Vision support works with both local models (Qwen2-VL) and cloud providers.

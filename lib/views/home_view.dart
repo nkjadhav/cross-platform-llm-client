@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../controllers/home_controller.dart';
 import 'chat_view.dart';
+import 'video_gen_view.dart';
 import 'model_view.dart';
 import 'server_view.dart';
 import 'settings_view.dart';
@@ -16,6 +17,10 @@ class HomeView extends GetView<HomeController> {
         icon: Icons.bubble_chart_outlined,
         activeIcon: Icons.bubble_chart,
         label: 'Chat'),
+    _NavItem(
+        icon: Icons.movie_creation_outlined,
+        activeIcon: Icons.movie_creation_rounded,
+        label: 'Video'),
     _NavItem(
         icon: Icons.arrow_downward_rounded,
         activeIcon: Icons.arrow_downward_rounded,
@@ -48,6 +53,7 @@ class HomeView extends GetView<HomeController> {
           index: controller.currentTab.value,
           children: const [
             ChatView(),
+            VideoGenView(),
             ModelView(),
             ServerView(),
             SettingsView()

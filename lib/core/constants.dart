@@ -54,6 +54,97 @@ class AppConstants {
   static const String keyServerNgrokDomain = 'server_ngrok_domain';
   static const String keyImageSteps = 'image_steps';
 
+  // ─── Video Generation Settings ──────────────────
+  static const String videoJobsBox = 'video_jobs';
+  static const String keyVideoProvider =
+      'video_provider'; // 'replicate', 'fal', 'custom'
+  static const String keyReplicateKey = 'replicate_api_key';
+  static const String keyFalKey = 'fal_api_key';
+  static const String keyVideoCustomBaseUrl = 'video_custom_base_url';
+  static const String keyVideoCustomKey = 'video_custom_api_key';
+  static const String keyVideoTextModel = 'video_text_model';
+  static const String keyVideoImageModel = 'video_image_model';
+  static const String keyVideoAspectRatio = 'video_aspect_ratio';
+  static const String keyVideoDuration = 'video_duration';
+
+  // Defaults for video generation
+  static const String defaultVideoProvider = 'replicate';
+  static const String defaultVideoAspectRatio = '16:9';
+  static const int defaultVideoDuration = 5;
+
+  /// Curated text-to-video models per provider (owner/name form).
+  static const Map<String, List<Map<String, String>>> videoTextModels = {
+    'replicate': [
+      {
+        'id': 'wan-video/wan-2.2-t2v-fast',
+        'name': 'WAN 2.2 T2V Fast',
+        'desc': 'Fast, high-quality text-to-video',
+      },
+      {
+        'id': 'minimax/video-01',
+        'name': 'MiniMax Video-01',
+        'desc': 'Cinematic 6s clips',
+      },
+      {
+        'id': 'kwaivgi/kling-v2.1',
+        'name': 'Kling v2.1',
+        'desc': 'Premium motion & coherence',
+      },
+    ],
+    'fal': [
+      {
+        'id': 'fal-ai/wan/v2.2-a14b/text-to-video',
+        'name': 'WAN 2.2 T2V',
+        'desc': 'Fast text-to-video',
+      },
+      {
+        'id': 'fal-ai/kling-video/v2.1/standard/text-to-video',
+        'name': 'Kling v2.1',
+        'desc': 'High-fidelity motion',
+      },
+    ],
+  };
+
+  /// Curated image-to-video models per provider (owner/name form).
+  static const Map<String, List<Map<String, String>>> videoImageModels = {
+    'replicate': [
+      {
+        'id': 'wan-video/wan-2.2-i2v-fast',
+        'name': 'WAN 2.2 I2V Fast',
+        'desc': 'Animate a still image, fast',
+      },
+      {
+        'id': 'minimax/video-01',
+        'name': 'MiniMax Video-01',
+        'desc': 'Animate from first frame',
+      },
+      {
+        'id': 'stability-ai/stable-video-diffusion',
+        'name': 'Stable Video Diffusion',
+        'desc': 'Classic image-to-video',
+      },
+    ],
+    'fal': [
+      {
+        'id': 'fal-ai/wan/v2.2-a14b/image-to-video',
+        'name': 'WAN 2.2 I2V',
+        'desc': 'Animate a still image',
+      },
+      {
+        'id': 'fal-ai/kling-video/v2.1/standard/image-to-video',
+        'name': 'Kling v2.1',
+        'desc': 'Premium image-to-video',
+      },
+    ],
+  };
+
+  static const List<String> videoAspectRatios = ['16:9', '9:16', '1:1'];
+  static const List<int> videoDurations = [5, 8, 10];
+
+  // Video API endpoints
+  static const String replicateEndpoint = 'https://api.replicate.com/v1';
+  static const String falQueueEndpoint = 'https://queue.fal.run';
+
   // Default Model Config
   static const double defaultTemperature = 0.7;
   static const int defaultMaxTokens = 1024;
