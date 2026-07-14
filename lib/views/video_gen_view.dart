@@ -478,7 +478,7 @@ class VideoGenView extends StatelessWidget {
                                     color: isDark
                                         ? Colors.white
                                         : Colors.black)),
-                              )),
+                              ),
                         ],
                       )
                     : Row(
