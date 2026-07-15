@@ -7,17 +7,20 @@ class HiveService extends GetxService {
   late Box _messagesBox;
   late Box _tasksBox;
   late Box _settingsBox;
+  late Box _videoJobsBox;
 
   Box get sessionsBox => _sessionsBox;
   Box get messagesBox => _messagesBox;
   Box get tasksBox => _tasksBox;
   Box get settingsBox => _settingsBox;
+  Box get videoJobsBox => _videoJobsBox;
 
   Future<HiveService> init() async {
     _sessionsBox = await Hive.openBox(AppConstants.chatSessionsBox);
     _messagesBox = await Hive.openBox(AppConstants.chatMessagesBox);
     _tasksBox = await Hive.openBox(AppConstants.tasksBox);
     _settingsBox = await Hive.openBox(AppConstants.settingsBox);
+    _videoJobsBox = await Hive.openBox(AppConstants.videoJobsBox);
     return this;
   }
 

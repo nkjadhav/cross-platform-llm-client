@@ -334,7 +334,7 @@ class ChatView extends GetView<ChatController> {
                         fontSize: 14, color: Theme.of(context).hintColor)),
                 const SizedBox(height: 20),
                 FilledButton.icon(
-                  onPressed: () => Get.find<HomeController>().changeTab(1),
+                  onPressed: () => Get.find<HomeController>().changeTab(2),
                   icon: const Icon(Icons.arrow_downward_rounded, size: 18),
                   label: const Text('Go to Models'),
                   style: FilledButton.styleFrom(

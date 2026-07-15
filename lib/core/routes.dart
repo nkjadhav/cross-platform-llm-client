@@ -4,6 +4,7 @@ import '../controllers/chat_controller.dart';
 import '../controllers/task_controller.dart';
 import '../controllers/model_controller.dart';
 import '../controllers/settings_controller.dart';
+import '../controllers/video_gen_controller.dart';
 import '../views/home_view.dart';
 import '../views/chat_view.dart';
 import '../views/task_view.dart';
@@ -25,6 +26,7 @@ class AppPages {
         Get.lazyPut(() => TaskController());
         Get.lazyPut(() => ModelController());
         Get.lazyPut(() => SettingsController());
+        Get.lazyPut(() => VideoGenController());
       }),
     ),
     GetPage(

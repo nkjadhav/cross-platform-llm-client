@@ -57,6 +57,9 @@ dependencies:
   gal: ^2.3.2
   syncfusion_flutter_pdf: ^33.2.6
 
+  # Video Playback (video generation preview)
+  video_player: ^2.9.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
